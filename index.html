@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
   <meta name="theme-color" content="#4F7DC9">
   <meta charset="UTF-8">
-  <title># Integrate multi-feature app integration: Deep Linking</title>
+  <title>Integrate multi-feature app integration: Zoom App and Team Chatbot Deep Linking</title>
   <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
   <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="https://storage.googleapis.com/claat-public/codelab-elements.css">
@@ -24,15 +24,572 @@
   <google-codelab codelab-gaid=""
                   codelab-ga4id=""
                   id="how-to-deep-link-zoom-client"
-                  title="# Integrate multi-feature app integration: Deep Linking"
+                  title="Integrate multi-feature app integration: Zoom App and Team Chatbot Deep Linking"
                   environment="web"
                   feedback-link="https://devforum.zoom.us/c/zoom-apps">
     
       <google-codelab-step label="Before you begin" duration="0">
-        <p>⚠️ <strong>Warning:</strong> This feature requires a paid plan and manifest beta program access.</p>
+        <p>⚠️ <strong>Warning:</strong> This guide assumes you&#39;re familiar building within the Zoom Workspace. You can start here or go back to the beginning of the full guide if you&#39;re new to Zoom App development.</p>
 <p>💡 <strong>Tip:</strong> If you don&#39;t have a paid workspace for development, you can join the <a href="https://api.slack.com/developer-program" target="_blank">Developer Program</a> and provision a sandbox with access to all Zoom Developer platform features for free.</p>
-<h2 is-upgraded>Introduction</h2>
-<p>//TO-DO</p>
+<h2 is-upgraded>Prerequisites</h2>
+<ul>
+<li>A Zoom Developer Account</li>
+<li>A Supabase Account</li>
+<li>A Ngrok Account</li>
+<li>Knowledge of Next.js and JavaScript</li>
+</ul>
+<h2 is-upgraded>📚 What You&#39;ll Learn</h2>
+<p>✓ How to get Zoom Rest API token</p>
+<p>✓ How to send teamchat message to Zoom Client</p>
+<p>✓ How to customized messages</p>
+<h2 is-upgraded>🧰 What You&#39;ll Need</h2>
+<ul>
+<li>Git</li>
+<li>Node.js</li>
+<li>Browser</li>
+<li>Code editor and terminal</li>
+<li>Zoom Developer Account for the creation and management of your Zoom App SDK</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Introduction" duration="0">
+        <p>In this guide, you&#39;ll learn how to add support for deep linking to both your Zoom App and Team Chatbot within the Zoom Client.</p>
+<p>By the end, you&#39;ll have:</p>
+<ul>
+<li>A fully functional web application that supports deep links to your Zoom App and Team Chatbot, allowing users to seamlessly open specific views or trigger actions directly from the Zoom Client.</li>
+</ul>
+<h2 is-upgraded>🛠️ Project Setup</h2>
+<ol type="1">
+<li>Clone the project and switch to the correct branch:</li>
+</ol>
+<pre><code language="language-bash" class="language-bash">git clone https://github.com/zoom/task-manager-sample.git
+cd task-manager-sample
+git checkout step-3-team-chat-api
+
+</code></pre>
+<ol type="1" start="2">
+<li>Install dependencies and start the app:</li>
+</ol>
+<pre><code language="language-bash" class="language-bash">npm install
+npm run dev
+
+</code></pre>
+<p>Now, you have a Task Manager application built with Next.js that integrates with Supabase and Zoom Chatbot APIs..</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Create a Task Notification component" duration="0">
+        <p>Create a new file: components/taskmanger/task-notification.tsx</p>
+<p>Paste in the following starter code:</p>
+<pre><code language="language-javascript" class="language-javascript">&#34;use client&#34;;
+
+import { useState } from &#34;react&#34;;
+
+interface TaskNotificationProps {
+  location?: string;        // e.g. &#34;Zoom App&#34;
+  issueId: string;         // e.g. &#34;ZSEE-162774&#34;
+  deeplink: string;        // The Zoom App deep link
+  onDismiss?: () =&gt; void;  // Optional callback if parent needs to know when it&#39;s dismissed
+}
+
+export default function TaskNotification({
+  location,
+  issueId,
+  deeplink,
+  onDismiss,
+}: TaskNotificationProps) {
+  const [visible, setVisible] = useState(true);
+
+  const chatbotDeeplink = process.env.NEXT_PUBLIC_ZOOM_CHATBOT_DEEPLINK;
+
+  console.log(&#34;Chatbot Deeplink: &#34;, chatbotDeeplink);
+
+  // If user closes or after a timeout, hide the notification
+  const handleDismiss = () =&gt; {
+    setVisible(false);
+    onDismiss?.();
+  };
+
+  if (!visible) return null;
+
+  return (
+    &lt;div className=&#34;fixed bottom-4 left-10 z-50 w-72 bg-white dark:bg-gray-800 shadow-lg rounded-md p-4&#34;&gt;
+      &lt;div className=&#34;flex items-start justify-between mb-2&#34;&gt;
+        &lt;span className=&#34;font-medium text-sm text-gray-900 dark:text-gray-100&#34;&gt;
+          You&#39;ve created &#34;
+          &lt;a
+            href={location + &#34;/&#34; + issueId}
+            target=&#34;_blank&#34;
+            rel=&#34;noopener noreferrer&#34;
+            className=&#34;underline text-blue-600 hover:text-blue-800&#34;
+          &gt;
+            {&#34;ZDP-&#34;+issueId}
+          &lt;/a&gt;
+          &#34; Task
+        &lt;/span&gt;
+        &lt;button
+          onClick={handleDismiss}
+          className=&#34;text-gray-400 hover:text-gray-600 dark:hover:text-gray-300&#34;
+        &gt;
+          ✕
+        &lt;/button&gt;
+      &lt;/div&gt;
+      &lt;div className=&#34;flex items-center gap-3&#34;&gt;
+        {/* &#34;View issue&#34; deep link */}
+        &lt;a
+          href={deeplink}
+          target=&#34;_blank&#34;
+          rel=&#34;noopener noreferrer&#34;
+          className=&#34;text-blue-600 dark:text-blue-400 text-sm hover:underline&#34;
+        &gt;
+          Open Zoom App
+        &lt;/a&gt;
+        &lt;a
+          href={chatbotDeeplink}
+          target=&#34;_blank&#34;
+          rel=&#34;noopener noreferrer&#34;
+          className=&#34;text-blue-600 dark:text-blue-400 text-sm hover:underline&#34;
+        &gt;
+          View Chatbot Activity
+        &lt;/a&gt;
+        {/* &#34;Copy link&#34; button */}
+        &lt;button
+          onClick={() =&gt; navigator.clipboard.writeText(deeplink)}
+          className=&#34;text-blue-600 dark:text-blue-400 text-sm hover:underline&#34;
+        &gt;
+          Copy link
+        &lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+</code></pre>
+<p>Add last sentence explainer</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Update the Edit Task Component to support deeplinking" duration="0">
+        <p>Create a new file: <code>components/taskmanger/add-activity.tsx</code></p>
+<p>Paste in the following starter code:</p>
+<pre><code language="language-javascript" class="language-javascript">&#34;use client&#34;;
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from &#34;@/components/ui/dialog&#34;;
+import { Input } from &#34;@/components/ui/input&#34;;
+import { Button } from &#34;@/components/ui/button&#34;;
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from &#34;@/components/ui/select&#34;;
+import { useState, useEffect } from &#34;react&#34;;
+import { createClient } from &#34;@/utils/supabase/client&#34;;
+import { useRouter, useParams } from &#34;next/navigation&#34;;
+import { useForm, Controller } from &#34;react-hook-form&#34;;
+import { AssigneeSelector } from &#34;@/components/taskmanger/assignee-selector&#34;;
+import { sendZoomIMMessage, ZoomIMMessagePayload } from &#34;@/app/lib/teamchat&#34;;
+import { getDeeplink } from &#34;@/app/lib/zoom-api&#34;;
+import TaskNotification from &#34;@/components/taskmanger/task-notification&#34;; // adjust import path as needed
+import { redirect } from &#34;next/navigation&#34;;
+
+import type { Tables } from &#34;@/lib/types&#34;;
+type Task = Tables&lt;&#39;tasks&#39;&gt;;
+
+const LISTS = [&#34;todo&#34;, &#34;in progress&#34;, &#34;completed&#34;];
+const PRIORITIES = [&#34;high&#34;, &#34;medium&#34;, &#34;low&#34;];
+
+type ZoomUser = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
+const AddActivity = ({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: (open: boolean) =&gt; void;
+}) =&gt; {
+  // Notification state for showing the TaskNotification component.
+  const [notification, setNotification] = useState&lt;{
+    issueId: string;
+    deeplink: string;
+  } | null&gt;(null);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm&lt;{
+    title: string;
+    date: string;
+    description: string;
+    assigned_users: { value: string; label: string }[];
+  }&gt;({
+    defaultValues: {
+      title: &#34;&#34;,
+      date: &#34;&#34;,
+      description: &#34;&#34;,
+      assigned_users: [],
+    },
+  });
+
+  const [priority, setPriority] = useState(PRIORITIES[1]);
+  const [stage, setStage] = useState(LISTS[0]);
+  const [availableUsers, setAvailableUsers] = useState&lt;ZoomUser[]&gt;([]);
+
+  const router = useRouter();
+  const params = useParams();
+  const projectId = Number(params.projectId);
+
+  // Fetch available users from the zoom_users table on mount.
+  useEffect(() =&gt; {
+    async function fetchAvailableUsers() {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from(&#34;zoom_users&#34;)
+        .select(&#34;id, first_name, last_name&#34;);
+      if (error) {
+        console.error(&#34;Error fetching zoom users:&#34;, error);
+      } else if (data) {
+        setAvailableUsers(data);
+      }
+    }
+    fetchAvailableUsers();
+  }, []);
+
+  const submitHandler = async (data: {
+    title: string;
+    date: string;
+    description: string;
+    assigned_users: { value: string; label: string }[];
+  }) =&gt; {
+    try {
+      const supabase = createClient();
+
+      // Retrieve the current user and session.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        console.error(&#34;Session error:&#34;, sessionError);
+        redirect(&#34;/login&#34;);
+        return;
+      }
+      const accessToken = sessionData.session.provider_token ?? &#34;&#34;;
+      console.log(&#34;Access Token:&#34;, accessToken);
+
+      // Map form assignee options to full user objects.
+      const selectedUsers = availableUsers.filter((u) =&gt;
+        data.assigned_users.some((option) =&gt; option.value === u.id)
+      );
+      console.log(&#34;Selected Users:&#34;, selectedUsers.map((u) =&gt; u.id));
+
+      // Build the new task object.
+      const newTask: Partial&lt;Task&gt; = {
+        title: data.title,
+        completed: false,
+        project_id: projectId,
+        user_id: user?.id,
+        due_date: new Date(data.date).toISOString(),
+        priority,
+        stage,
+        description: data.description,
+        assigned_users: selectedUsers,
+      };
+
+      // Insert the new task and retrieve the inserted record.
+      const { data: insertedData, error: insertError } = await supabase
+        .from(&#34;tasks&#34;)
+        .insert(newTask)
+        .select();
+      if (insertError || !insertedData || insertedData.length === 0) {
+        console.error(&#34;Error adding task:&#34;, insertError);
+        return;
+      }
+      const insertedTask = insertedData[0];
+      console.log(&#34;Task Added:&#34;, insertedTask);
+
+      // Build Zoom message payload.
+      const message = selectedUsers
+        .map((u) =&gt; `Special delivery for ${u.first_name} ${u.last_name} 📝!`)
+        .join(&#34;, &#34;);
+      const at_items = selectedUsers.map((u) =&gt; ({
+        at_contact: &#39;max.test.zoom@gmail.com&#39;, // example static value or dynamic if needed
+        at_type: 1,
+        start_position: 15,
+        end_position: 20,
+      }));
+      const to_contact = selectedUsers.map((u) =&gt; u.id).join(&#34;,&#34;);
+
+      const payload: ZoomIMMessagePayload = {
+        message,
+        at_items,
+        rich_text: [
+          {
+            start_position: 0,
+            end_position: 5,
+            format_type: &#34;Paragraph&#34;,
+            format_attr: &#34;h1&#34;,
+          },
+        ],
+        file_ids: [],
+        reply_main_message_id: &#34;&#34;,
+        to_contact,
+        interactive_cards: [
+          {
+            card_json: JSON.stringify({
+              content: {
+                settings: { form: true },
+                head: {
+                  text: &#34;New Task Assigned&#34;,
+                  sub_head: { text: &#34;I am a sub head text&#34; },
+                },
+                body: [
+                  {
+                    type: &#34;attachments&#34;,
+                    resource_url: &#34;https://zoom.us&#34;,
+                    img_url:
+                      &#34;https://d24cgw3uvb9a9h.cloudfront.net/static/93516/image/new/ZoomLogo.png&#34;,
+                    information: {
+                      title: { text: &#34;I am an attachment title&#34; },
+                      description: { text: &#34;I am an attachment description&#34; },
+                    },
+                  },
+                  {
+                    type: &#34;actions&#34;,
+                    items: [
+                      { text: &#34;Open&#34;, value: &#34;open&#34;, style: &#34;Primary&#34; },
+                      { text: &#34;Edit&#34;, value: &#34;edit&#34;, style: &#34;Default&#34; },
+                    ],
+                  },
+                ],
+              },
+            }),
+          },
+        ],
+      };
+
+      // Send the Zoom IM message.
+      await sendZoomIMMessage(accessToken, payload);
+
+      // Retrieve a deeplink for the created task.
+      const deeplink = await getDeeplink(accessToken);
+      console.log(&#34;Deeplink-AddTask:&#34;, deeplink);
+      // Set notification state with the inserted task&#39;s id and the deeplink.
+      if (insertedTask.id) {
+        setNotification({ issueId: insertedTask.id.toString(), deeplink: deeplink || &#34;&#34; });
+      } else {
+        console.error(&#34;Inserted task ID is undefined.&#34;);
+      }
+
+      // Reset the form and close the dialog. (We intentionally do not refresh immediately
+      // so the notification remains visible until dismissed.)
+      reset();
+      setOpen(false);
+    } catch (err) {
+      console.error(&#34;Error in submitHandler:&#34;, err);
+    }
+  };
+
+  return (
+    &lt;&gt;
+      &lt;div className=&#34;w-full bg-white dark:bg-background text-black dark:text-white shadow-md p-4 rounded-lg space-y-4 border border-gray-300 dark:border-border&#34;&gt;
+        &lt;Dialog open={open} onOpenChange={setOpen}&gt;
+          &lt;DialogContent className=&#34;sm:max-w-md&#34;&gt;
+            &lt;form onSubmit={handleSubmit(submitHandler)}&gt;
+              &lt;DialogHeader&gt;
+                &lt;DialogTitle&gt;Add Task&lt;/DialogTitle&gt;
+                &lt;DialogDescription&gt;
+                  Fill in the details to create a new task.
+                &lt;/DialogDescription&gt;
+              &lt;/DialogHeader&gt;
+
+              &lt;div className=&#34;flex flex-col gap-4 mt-4&#34;&gt;
+                {/* Task Title */}
+                &lt;div&gt;
+                  &lt;label htmlFor=&#34;title&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                    Task Title
+                  &lt;/label&gt;
+                  &lt;Input
+                    id=&#34;title&#34;
+                    placeholder=&#34;Enter task title&#34;
+                    {...register(&#34;title&#34;, { required: &#34;Task title is required&#34; })}
+                  /&gt;
+                  {errors.title &amp;&amp; (
+                    &lt;p className=&#34;text-red-500 text-sm&#34;&gt;{errors.title.message}&lt;/p&gt;
+                  )}
+                &lt;/div&gt;
+
+                {/* Task Description */}
+                &lt;div&gt;
+                  &lt;label htmlFor=&#34;description&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                    Task Description
+                  &lt;/label&gt;
+                  &lt;textarea
+                    id=&#34;description&#34;
+                    placeholder=&#34;Enter task description&#34;
+                    {...register(&#34;description&#34;, { required: &#34;Task description is required&#34; })}
+                    className=&#34;w-full border border-gray-300 dark:border-gray-600 p-2 rounded-md outline-none focus:ring-2 ring-blue-500 text-gray-900 dark:text-gray-100&#34;
+                  &gt;&lt;/textarea&gt;
+                  {errors.description &amp;&amp; (
+                    &lt;p className=&#34;text-red-500 text-sm&#34;&gt;{errors.description.message}&lt;/p&gt;
+                  )}
+                &lt;/div&gt;
+
+                {/* Assignee Selection */}
+                &lt;div&gt;
+                  &lt;label htmlFor=&#34;assigned_users&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                    Assign Task (Select one or more)
+                  &lt;/label&gt;
+                  &lt;Controller
+                    control={control}
+                    name=&#34;assigned_users&#34;
+                    rules=&#123;&#123; required: &#34;Please assign at least one user&#34; }}
+                    render={({ field: { onChange, value } }) =&gt; (
+                      &lt;AssigneeSelector
+                        options={availableUsers.map((u) =&gt; ({
+                          value: u.id,
+                          label: `${u.first_name} ${u.last_name}`,
+                        }))}
+                        value={value || []}
+                        onChange={onChange}
+                      /&gt;
+                    )}
+                  /&gt;
+                  {errors.assigned_users &amp;&amp; (
+                    &lt;p className=&#34;text-red-500 text-sm&#34;&gt;{errors.assigned_users.message}&lt;/p&gt;
+                  )}
+                &lt;/div&gt;
+
+                {/* Task Stage and Date */}
+                &lt;div className=&#34;flex gap-4&#34;&gt;
+                  &lt;div className=&#34;w-full&#34;&gt;
+                    &lt;label htmlFor=&#34;stage&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                      Task Stage
+                    &lt;/label&gt;
+                    &lt;Select onValueChange={setStage} defaultValue={stage}&gt;
+                      &lt;SelectTrigger&gt;
+                        &lt;SelectValue placeholder=&#34;Select stage&#34; /&gt;
+                      &lt;/SelectTrigger&gt;
+                      &lt;SelectContent&gt;
+                        {LISTS.map((list) =&gt; (
+                          &lt;SelectItem key={list} value={list}&gt;
+                            {list.toUpperCase()}
+                          &lt;/SelectItem&gt;
+                        ))}
+                      &lt;/SelectContent&gt;
+                    &lt;/Select&gt;
+                  &lt;/div&gt;
+
+                  &lt;div className=&#34;w-full&#34;&gt;
+                    &lt;label htmlFor=&#34;date&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                      Task Date
+                    &lt;/label&gt;
+                    &lt;Input
+                      type=&#34;date&#34;
+                      id=&#34;date&#34;
+                      {...register(&#34;date&#34;, { required: &#34;Task date is required&#34; })}
+                    /&gt;
+                    {errors.date &amp;&amp; (
+                      &lt;p className=&#34;text-red-500 text-sm&#34;&gt;{errors.date.message}&lt;/p&gt;
+                    )}
+                  &lt;/div&gt;
+                &lt;/div&gt;
+
+                {/* Priority */}
+                &lt;div className=&#34;flex gap-4&#34;&gt;
+                  &lt;div className=&#34;w-full&#34;&gt;
+                    &lt;label htmlFor=&#34;priority&#34; className=&#34;block text-sm font-medium text-gray-700&#34;&gt;
+                      Priority Level
+                    &lt;/label&gt;
+                    &lt;Select onValueChange={setPriority} defaultValue={priority}&gt;
+                      &lt;SelectTrigger&gt;
+                        &lt;SelectValue placeholder=&#34;Select priority&#34; /&gt;
+                      &lt;/SelectTrigger&gt;
+                      &lt;SelectContent&gt;
+                        {PRIORITIES.map((level) =&gt; (
+                          &lt;SelectItem key={level} value={level}&gt;
+                            {level.toUpperCase()}
+                          &lt;/SelectItem&gt;
+                        ))}
+                      &lt;/SelectContent&gt;
+                    &lt;/Select&gt;
+                  &lt;/div&gt;
+                &lt;/div&gt;
+
+                {/* Submit and Cancel Buttons */}
+                &lt;div className=&#34;flex justify-end gap-4 mt-4&#34;&gt;
+                  &lt;Button type=&#34;submit&#34; className=&#34;bg-blue-600 px-8 text-sm font-semibold text-white hover:bg-blue-700&#34;&gt;
+                    Submit
+                  &lt;/Button&gt;
+                  &lt;Button
+                    type=&#34;button&#34;
+                    variant=&#34;secondary&#34;
+                    onClick={() =&gt; setOpen(false)}
+                    className=&#34;px-5 text-sm font-semibold&#34;
+                  &gt;
+                    Cancel
+                  &lt;/Button&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/form&gt;
+          &lt;/DialogContent&gt;
+        &lt;/Dialog&gt;
+      &lt;/div&gt;
+      {notification &amp;&amp; (
+        &lt;TaskNotification
+          location= {window.location.href}
+          issueId={notification.issueId}
+          deeplink={notification.deeplink}
+          onDismiss={() =&gt; {
+            setNotification(null);
+            router.refresh();
+          }}
+        /&gt;
+      )}
+    &lt;/&gt;
+  );
+};
+
+export default AddActivity;
+
+
+</code></pre>
+<h2 is-upgraded>Resources</h2>
+<ul>
+<li>N/A</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Conclusion" duration="0">
+        <p>Congratulations! You&#39;ve successfully added deep linking support to your Zoom App and chatbot within the Zoom Client.</p>
+<p>Here&#39;s a quick recap of what you used:</p>
+<h2 is-upgraded>Learn more</h2>
+<ul>
+<li><a href="https://developers.zoom.us/docs/zoom-apps/" target="_blank">Getting started with Zoom App</a></li>
+<li><a href="https://developers.zoom.us/docs/integrations/" target="_blank">Integrations (OAuth apps)</a></li>
+<li><a href="https://developers.zoom.us/docs/team-chat/installation-and-authentication/#deep-linking" target="_blank">Team Chatbot Deep linking</a></li>
+<li><a href="https://developers.zoom.us/docs/api/marketplace/#tag/apps/POST/zoomapp/deeplink" target="_blank">Marketplace API: Generate an app deeplink</a></li>
+</ul>
 
 
       </google-codelab-step>
