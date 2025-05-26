@@ -89,7 +89,7 @@ npm run dev
 
       </google-codelab-step>
     
-      <google-codelab-step label="Zoom App and Team Chatbot Deep Linking" duration="0">
+      <google-codelab-step label="Overview: Zoom App and Team Chatbot Deep Linking" duration="0">
         <p>In this guide, you&#39;ll learn how to add support for deep linking to both your Zoom App and Team Chatbot within the Zoom Client.</p>
 <p>By the end, you&#39;ll have:</p>
 <ul>
@@ -99,8 +99,10 @@ npm run dev
 
       </google-codelab-step>
     
-      <google-codelab-step label="Create a Task Notification component" duration="0">
-        <p>Create a new file: components/taskmanger/task-notification.tsx</p>
+      <google-codelab-step label="Create a task notification component" duration="0">
+        <p>In this secion, you will create a task notification component that displays the Zoom Team Chatbot link, Zoom App deep link, and task ID. When a user creates a task, this component shows a notification in the lower-left corner with the relevant links.</p>
+<h2 is-upgraded>Step 1: Create the task notification component file</h2>
+<p><strong>File Path:</strong> components/taskmanger/task-notification.tsx</p>
 <p>Paste in the following starter code:</p>
 <pre><code language="language-javascript" class="language-javascript">&#34;use client&#34;;
 
@@ -191,8 +193,11 @@ export default function TaskNotification({
 
       </google-codelab-step>
     
-      <google-codelab-step label="Update the Edit Task Component to support deeplinking" duration="0">
-        <p>Create a new file: <code>components/taskmanger/add-activity.tsx</code></p>
+      <google-codelab-step label="Update the add activity component to support deep linking" duration="0">
+        <p>In this section, you will update the add activity component to display a notification with deep links to the Zoom app and Zoom Team Chat when a user adds a task. This enhances the user experience by creating a seamless interaction between the web application and the Zoom client.</p>
+<h2 is-upgraded>Step 2: Update the add activity component file</h2>
+<p><strong>File Path:</strong></p>
+<p>Create a new file: <code>components/taskmanger/add-activity.tsx</code></p>
 <p>Paste in the following starter code:</p>
 <pre><code language="language-javascript" class="language-javascript">&#34;use client&#34;;
 
